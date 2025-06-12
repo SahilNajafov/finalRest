@@ -1,22 +1,9 @@
-version: '2'
+version: '3.8'
 
 services:
-#  library_service_provider:
-#    container_name: library_service
-#    build:
-#      context: .
-#      dockerfile: Dockerfile
-#    environment:
-#      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgresql_provider_library:5432/finalproject
-#      - SPRING_DATASOURCE_USERNAME=root
-#      - SPRING_DATASOURCE_PASSWORD=root
-#    ports:
-#      - "9000:9000"
-##    restart: unless-stopped
-
   postgresql_provider_ecommerce:
     image: postgres:15
-    container_name: postgresql_provider_library
+    container_name: postgresql_provider_library_v2
     ports:
       - "5434:5432"
     volumes:
@@ -26,6 +13,12 @@ services:
       - POSTGRES_DB=finalproject
       - POSTGRES_USER=root
       - POSTGRES_PASSWORD=root
+  redis:
+    image: redis
+    container_name: redis-container
+    ports:
+      - "6380:6379"
+    restart: always
 volumes:
   db_provider_management_service:
     driver: local

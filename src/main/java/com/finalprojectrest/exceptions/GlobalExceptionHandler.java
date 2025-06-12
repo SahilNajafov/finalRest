@@ -4,6 +4,7 @@ import com.finalprojectrest.dto.response.ErrorResponse;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -12,14 +13,17 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.PatternSyntaxException;
 
 import static com.finalprojectrest.enums.ErrorCodeEnum.*;
 
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
     @ExceptionHandler(UserNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ErrorResponse handleCustomException(UserNotFoundException e) {
@@ -30,31 +34,34 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleInputParam(MethodArgumentTypeMismatchException e) {
         String param = e.getParameter().getParameter().getName();
-        return ErrorResponse.of(VALIDATION_ERROR, param);
+        return ErrorResponse.of(VALIDATION_ERROR, param + " has invalid type!");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleInputParam(MethodArgumentNotValidException e) {
         List<FieldError> fieldErrors = e.getBindingResult().getFieldErrors();
-        StringBuilder fieldName= new StringBuilder();
-        for (FieldError a:fieldErrors) {
-            fieldName.append(a.getField()).append(" ");
+
+        Map<String, String> errors = new HashMap<>();
+        for (FieldError fieldError : fieldErrors) {
+            errors.putIfAbsent(fieldError.getField(), fieldError.getDefaultMessage());
         }
-        System.out.println(fieldName);
-        return ErrorResponse.of(VALIDATION_ERROR, fieldName.toString());
+
+        return ErrorResponse.of(VALIDATION_ERROR, errors);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ErrorResponse handleValidation(ConstraintViolationException e) {
-        String fieldName = null;
-        List<String> fieldNames = new ArrayList<>();
-        for (ConstraintViolation<?> constraintViolations : e.getConstraintViolations()) {
-            fieldName = constraintViolations.getPropertyPath().toString();
-            fieldNames.add(fieldName);
+    public ErrorResponse handleConstraintViolation(ConstraintViolationException e) {
+        Map<String, String> errors = new HashMap<>();
+
+        for (ConstraintViolation<?> violation : e.getConstraintViolations()) {
+            String field = violation.getPropertyPath().toString();
+            String message = violation.getMessage();
+            errors.put(field, message);
         }
-        return ErrorResponse.of(VALIDATION_ERROR, fieldName);
+
+        return ErrorResponse.of(VALIDATION_ERROR, errors);
     }
 
     @ExceptionHandler(AlreadyRegisteredUserException.class)
@@ -75,20 +82,22 @@ public class GlobalExceptionHandler {
         return ErrorResponse.of(BAD_CREDENTIALS_ERROR);
     }
 
-
     @ExceptionHandler(IllegalArgumentException.class)
-    @ResponseStatus(HttpStatus.NOT_ACCEPTABLE)
-    public ErrorResponse handleIllegalArgument(IllegalArgumentException e) {
-        return ErrorResponse.of(ILLEGAL_ARGUMENT_ERROR);
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of(ILLEGAL_ARGUMENT_ERROR, ex.getMessage()));
     }
 
-//    @ExceptionHandler(Exception.class)
-//    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-//    public ErrorResponse handleUnknown(Exception e) {
-//        return ErrorResponse.builder()
-//                .code(ErrorCodeEnum.UNKNOWN_ERROR.getCode())
-//                .message(ErrorCodeEnum.UNKNOWN_ERROR.getMessage())
-//                .build();
-//    }
+    @ExceptionHandler(PatternSyntaxException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handlePatternError(PatternSyntaxException ex) {
+        return ErrorResponse.of(VALIDATION_ERROR, "Invalid regex pattern in validation. Please contact support.");
+    }
 
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ErrorResponse handleUnknown(Exception e) {
+        return ErrorResponse.of(UNKNOWN_ERROR, "Unexpected error occurred: " + e.getMessage());
+    }
 }

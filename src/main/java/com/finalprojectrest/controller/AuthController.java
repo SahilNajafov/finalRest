@@ -2,11 +2,14 @@ package com.finalprojectrest.controller;
 
 import com.finalprojectrest.config.JwtService;
 import com.finalprojectrest.dto.request.AuthenticationRequest;
+import com.finalprojectrest.dto.request.PasswordRequest;
 import com.finalprojectrest.dto.response.AuthenticationResponse;
 import com.finalprojectrest.entity.Student;
 import com.finalprojectrest.repository.StudentRepository;
 import com.finalprojectrest.service.LogoutService;
+import com.finalprojectrest.service.StudentService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -31,6 +34,7 @@ public class AuthController {
     PasswordEncoder passwordEncoder;
     StudentRepository studentRepository;
     LogoutService logoutService;
+    StudentService studentService;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody AuthenticationRequest request) {
@@ -62,11 +66,16 @@ public class AuthController {
     }
 
     @PostMapping("/set-password/{fin}")
-    public ResponseEntity<?> setPassword(@RequestBody AuthenticationRequest request,@PathVariable String fin) {
-        Student student = studentRepository.findByStudentFIN(fin).orElseThrow(()->new RuntimeException("Student not found"));
+    public ResponseEntity<?> setPassword(@RequestBody AuthenticationRequest request, @PathVariable String fin) {
+        Student student = studentRepository.findByStudentFIN(fin).orElseThrow(() -> new RuntimeException("Student not found"));
         student.setPassword(passwordEncoder.encode(request.getPassword()));
         student.setEmail(request.getEmail());
         studentRepository.save(student);
         return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/password")
+    public ResponseEntity<?> update(@RequestBody @Valid PasswordRequest request) {
+        return ResponseEntity.ok(studentService.updatePassword(request));
     }
 }

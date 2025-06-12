@@ -17,7 +17,6 @@ import java.util.List;
 @RequestMapping("/api/v1")
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class RestEBookController {
-
     EBookService eBookService;
 
     @GetMapping("/ebooks")
